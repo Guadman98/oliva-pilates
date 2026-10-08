@@ -1,6 +1,13 @@
 (function () {
   'use strict';
 
+  /* ---------- Configuración ---------- */
+
+  // URL de la aplicación web de Google Apps Script que guarda las reservas
+  // en Google Sheets (ver google-apps-script/reservas.gs). Si queda vacía,
+  // el formulario funciona en modo demostración y no envía nada.
+  var ENDPOINT_RESERVAS = 'https://script.google.com/macros/s/AKfycbzXRurIEKCyVCOrkgTf_nEOQLbzNQNW5bMpPci1YOnmAgm-XwoXGCJNmr9tvdOJI3ce/exec';
+
   /* ---------- Datos del estudio ---------- */
 
   // Horas de inicio (formato 24 h) por día de la semana: 0 = domingo … 6 = sábado
@@ -194,6 +201,7 @@
     document.getElementById('f-' + id).addEventListener('input', function () { mostrarError(id, ''); });
   });
   document.getElementById('f-datos').addEventListener('change', function () { mostrarError('datos', ''); });
+  campoPrimera.addEventListener('change', function () { mostrarError('primera', ''); });
 
   function validar() {
     var errores = {};
@@ -229,23 +237,30 @@
     return error;
   }
 
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var errores = validar();
-    if (errores.length) {
-      document.getElementById('f-' + errores[0]).focus();
-      return;
-    }
+  var botonEnviar = document.getElementById('booking-submit');
+  var alertaEnvio = document.getElementById('e-envio');
+  var enviando = false;
 
+  if (ENDPOINT_RESERVAS) {
+    document.getElementById('booking-note').textContent =
+      'Recibirás la confirmación de tu cupo por correo o WhatsApp.';
+    document.getElementById('d-codigo-label').textContent = 'Código de reserva';
+    document.getElementById('done-note').textContent =
+      'Tu solicitud quedó registrada. El estudio confirmará tu cupo por correo o WhatsApp. Guarda tu código de reserva.';
+  }
+
+  function valorEstimado(clase) {
+    if (campoPrimera.checked) return formatoPesos(25000) + ' (primera clase)';
+    if (clase.grupal) return formatoPesos(45000) + ' o una clase de tu plan';
+    return formatoPesos(95000) + ' (sesión privada)';
+  }
+
+  function mostrarConfirmacion(codigo, valor) {
     var clase = CLASES[campoClase.value];
     var fecha = desdeISO(campoFecha.value);
     var fechaTexto = fecha.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    var valor;
-    if (campoPrimera.checked) valor = formatoPesos(25000) + ' (primera clase)';
-    else if (clase.grupal) valor = formatoPesos(45000) + ' o una clase de tu plan';
-    else valor = formatoPesos(95000) + ' (sesión privada)';
 
-    document.getElementById('d-codigo').textContent = 'OP-' + Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('d-codigo').textContent = codigo;
     document.getElementById('d-clase').textContent = clase.nombre + ' · ' + clase.duracion;
     document.getElementById('d-fecha').textContent = fechaTexto.charAt(0).toUpperCase() + fechaTexto.slice(1);
     document.getElementById('d-hora').textContent = formatoHora(Number(campoHora.value));
@@ -255,9 +270,78 @@
     form.hidden = true;
     done.hidden = false;
     done.focus();
+  }
+
+  function estadoEnvio(activo) {
+    enviando = activo;
+    botonEnviar.disabled = activo;
+    botonEnviar.textContent = activo ? 'Enviando…' : 'Solicitar reserva';
+    form.setAttribute('aria-busy', String(activo));
+  }
+
+  function enviarReserva() {
+    var datos = new URLSearchParams({
+      clase: campoClase.value,
+      fecha: campoFecha.value,
+      hora: campoHora.value,
+      nombre: document.getElementById('f-nombre').value.trim(),
+      correo: document.getElementById('f-correo').value.trim(),
+      telefono: document.getElementById('f-telefono').value.trim(),
+      primera: campoPrimera.checked ? 'si' : '',
+      datos: document.getElementById('f-datos').checked ? 'si' : '',
+      empresa: document.getElementById('f-empresa').value
+    });
+
+    estadoEnvio(true);
+
+    // Se envía como formulario (sin cabeceras personalizadas) para que el
+    // navegador no haga una petición previa de CORS, que Apps Script no admite.
+    fetch(ENDPOINT_RESERVAS, { method: 'POST', body: datos })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (res) {
+        estadoEnvio(false);
+        if (res.ok) {
+          mostrarConfirmacion(res.codigo, res.valor || valorEstimado(CLASES[campoClase.value]));
+          return;
+        }
+        if (res.campo && document.getElementById('e-' + res.campo)) {
+          mostrarError(res.campo, res.mensaje);
+          document.getElementById('f-' + res.campo).focus();
+        } else {
+          alertaEnvio.textContent = res.mensaje || 'No pudimos registrar la reserva. Intenta de nuevo.';
+        }
+      })
+      .catch(function () {
+        estadoEnvio(false);
+        alertaEnvio.textContent = 'No pudimos conectar con el sistema de reservas. Revisa tu conexión e intenta de nuevo.';
+      });
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (enviando) return;
+    alertaEnvio.textContent = '';
+    mostrarError('primera', '');
+
+    var errores = validar();
+    if (errores.length) {
+      document.getElementById('f-' + errores[0]).focus();
+      return;
+    }
+
+    if (ENDPOINT_RESERVAS) {
+      enviarReserva();
+    } else {
+      mostrarConfirmacion('OP-' + Math.floor(1000 + Math.random() * 9000), valorEstimado(CLASES[campoClase.value]));
+    }
   });
 
   document.getElementById('booking-reset').addEventListener('click', function () {
+    alertaEnvio.textContent = '';
+    mostrarError('primera', '');
     form.reset();
     actualizarHoras();
     actualizarOferta();

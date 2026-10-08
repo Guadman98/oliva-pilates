@@ -924,6 +924,25 @@ a { color: inherit; }
 .check + .field__error { margin: -.5rem 0 1rem; }
 
 .booking-form .btn--block { margin-top: .75rem; }
+.booking-form .btn[disabled] { opacity: .7; cursor: progress; }
+
+.booking-form__alert {
+  margin: 1rem 0 0;
+  padding: .75rem 1rem;
+  border-left: 3px solid var(--error);
+  background: #F7E9E5;
+  color: var(--error);
+  font-size: .9375rem;
+}
+.booking-form__alert:empty { display: none; }
+
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
 .booking-form__note {
   margin: 1rem 0 0;
   font-size: .8125rem;

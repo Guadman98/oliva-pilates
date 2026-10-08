@@ -436,6 +436,7 @@
               <input type="checkbox" id="f-primera" name="primera">
               <label for="f-primera">Es mi primera clase en Oliva (precio especial de $25.000)</label>
             </div>
+            <p class="field__error" id="e-primera"></p>
 
             <div class="check">
               <input type="checkbox" id="f-datos" name="datos" required>
@@ -443,13 +444,20 @@
             </div>
             <p class="field__error" id="e-datos"></p>
 
-            <button class="btn btn--primary btn--block" type="submit">Solicitar reserva</button>
-            <p class="booking-form__note">Formulario de demostración: no consulta disponibilidad ni crea reservas reales.</p>
+            <!-- Campo trampa para bots: oculto para las personas -->
+            <div class="hp" aria-hidden="true">
+              <label for="f-empresa">Empresa</label>
+              <input type="text" id="f-empresa" name="empresa" tabindex="-1" autocomplete="off">
+            </div>
+
+            <p class="booking-form__alert" id="e-envio" role="alert"></p>
+            <button class="btn btn--primary btn--block" type="submit" id="booking-submit">Solicitar reserva</button>
+            <p class="booking-form__note" id="booking-note">Formulario de demostración: no consulta disponibilidad ni crea reservas reales.</p>
           </form>
 
           <div class="booking-done" id="booking-done" hidden tabindex="-1">
             <h3>Solicitud recibida</h3>
-            <p class="booking-done__code">Código de ejemplo: <strong id="d-codigo"></strong></p>
+            <p class="booking-done__code"><span id="d-codigo-label">Código de ejemplo</span>: <strong id="d-codigo"></strong></p>
             <dl>
               <div><dt>Clase</dt><dd id="d-clase"></dd></div>
               <div><dt>Fecha</dt><dd id="d-fecha"></dd></div>
@@ -457,7 +465,7 @@
               <div><dt>A nombre de</dt><dd id="d-nombre"></dd></div>
               <div><dt>Valor</dt><dd id="d-valor"></dd></div>
             </dl>
-            <p class="booking-form__note">Esta es una confirmación de demostración. En la versión final, el estudio confirmaría tu cupo por correo o WhatsApp.</p>
+            <p class="booking-form__note" id="done-note">Esta es una confirmación de demostración. En la versión final, el estudio confirmaría tu cupo por correo o WhatsApp.</p>
             <button class="btn btn--outline" type="button" id="booking-reset">Hacer otra reserva</button>
           </div>
         </div>
